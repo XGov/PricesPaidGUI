@@ -99,6 +99,7 @@ COOKIE_INVALID = 3        #  Invalid PYCAS cookie found.
 TICKET_OK      = 0        #  Valid CAS server ticket found.
 TICKET_NONE    = 1        #  No CAS server ticket found.
 TICKET_INVALID = 2        #  Invalid CAS server ticket found.
+TICKET_NOPIV   = 3        #  No CAS server ticket found.
 
 CAS_MSG = (
 "CAS authentication successful.",
@@ -303,6 +304,31 @@ def validate_cas_2(cas_host, service_url, ticket, opt):
 		return TICKET_OK, id
 
 
+#  Validate ticket using cas 2.0 protocol
+#    The 2.0 protocol allows the use of the mutually exclusive "renew" and "gateway" options.
+def validate_cas_2x(cas_host, service_url, ticket, opt):
+	#  Second Call to CAS server: Ticket found, verify it.
+	cas_validate = cas_host + "/cas/serviceValidate?ticket=" + ticket + "&service=" + service_url
+	if opt:
+		cas_validate += "&%s=true" % opt
+	f_validate   = urllib.urlopen(cas_validate)
+	#  Get first line - should be yes or no
+	response = f_validate.read()
+	id = parse_tag(response,"cas:user")
+	#  Ticket does not validate, return error
+	if id=="":
+		return TICKET_INVALID, ""
+	#  Ticket validates
+	else:
+                writelog("response = "+response)
+                pivcard = parse_tag(response,"maxAttribute:samlAuthenticationStatementAuthMethod")
+                
+                agencyThatRequired = parse_tag(response,"maxAttribute:EAuth-LOA")
+                writelog("pivcard = "+pivcard)
+                writelog("agencyThatRequired = "+agencyThatRequired)
+		return TICKET_OK, id, pivcard, agencyThatRequired
+
+
 #  Read cookies from env variable HTTP_COOKIE.
 def get_cookies():
 	#  Read all cookie pairs
@@ -348,70 +374,29 @@ def get_ticket_status_from_ticket(ticket,cas_host,service_url,protocol,opt):
         else:
                 return ticket_status, ""
 
+def get_ticket_status_from_ticket_piv_required(ticket,cas_host,service_url,protocol,opt):
+        if protocol==1:
+                ticket_status, id = validate_cas_1(cas_host, service_url, ticket, opt)
+        else:
+                ticket_status, id,piv,pivx = validate_cas_2x(cas_host, service_url, ticket, opt)
+
+        writelog("ticket status"+repr(ticket_status))
+        writelog("piv status"+repr(piv))
+        writelog("pivx status"+repr(pivx))
+        #  Make cookie and return id
+        if ticket_status==TICKET_OK and (piv == "urn:max:fips-201-pivcard" or pivx != ""):
+                return TICKET_OK, id
+        #  Return error status
+        else:
+                if ticket_status==TICKET_OK:
+                        return TICKET_NOPIV, ""
+                else:
+                        return TICKET_NONE, ""
+
 
 #-----------------------------------------------------------------------
 #  Exported functions
 #-----------------------------------------------------------------------
-
-#  Login to cas and return user id.
-#
-#   Returns status, id, pycas_cookie.
-#
-def login(cas_host, service_url, lifetime=None, secure=1, protocol=2, path="/", opt=""):
-
-        writelog("login begun")
-	#  Check cookie for previous pycas state, with is either
-	#     COOKIE_AUTH    - client already authenticated by pycas.
-	#     COOKIE_GATEWAY - client returning from CAS_SERVER with gateway option set.
-	#  Other cookie status are 
-	#     COOKIE_NONE    - no cookie found.
-	#     COOKIE_INVALID - invalid cookie found.
-	cookie_status, id = get_cookie_status()
-
-        writelog("got cookie status")
-
-	if cookie_status==COOKIE_AUTH:
-                writelog("CAS_OK")
-		return CAS_OK, id, ""
-
-	if cookie_status==COOKIE_INVALID:
-		return CAS_COOKIE_INVALID, "", ""
-
-	#  Check ticket ticket returned by CAS server, ticket status can be
-	#     TICKET_OK      - a valid authentication ticket from CAS server
-	#     TICKET_INVALID - an invalid authentication ticket.
-	#     TICKET_NONE    - no ticket found.
-	#  If ticket is ok, then user has authentiocated, return id and 
-	#  a pycas cookie for calling program to send to web browser.
-
-        writelog("getting cookie status")
-	ticket_status, id = get_ticket_status(cas_host,service_url,protocol,opt)
-
-	if ticket_status==TICKET_OK:
-		timestr     = str(int(time.time()))
-		hash        = makehash(timestr + ":" + id)
-		cookie_val  = hash + timestr + ":" + id
-		domain      = urlparse.urlparse(service_url)[1]
-		return CAS_OK, id, make_pycas_cookie(cookie_val, domain, path, secure)
-
-	elif ticket_status==TICKET_INVALID:
-		return CAS_TICKET_INVALID, "", ""
-
-        writelog("middle")
-
-	#  If unathenticated and in gateway mode, return gateway status and clear
-	#  pycas cookie (which was set to gateway by do_redirect()).
-	if opt=="gateway":
-		if cookie_status==COOKIE_GATEWAY:
-			domain,path = urlparse.urlparse(service_url)[1:3]
-			#  Set cookie expiration in the past to clear the cookie.
-			past_date = time.strftime("%a, %d-%b-%Y %H:%M:%S %Z",time.localtime(time.time()-48*60*60))
-			return CAS_GATEWAY, "", make_pycas_cookie("",domain,path,secure,past_date)
-
-        writelog("oooga booga")
-
-	#  Do redirect
-	do_redirect(cas_host, service_url, opt, secure)
 
 # This function should be merged with the above function "login"
 def check_authenticated_p(ticket,cas_host, service_url, lifetime=None, secure=1, protocol=2, path="/", opt=""):
@@ -442,7 +427,8 @@ def check_authenticated_p(ticket,cas_host, service_url, lifetime=None, secure=1,
 	#  a pycas cookie for calling program to send to web browser.
 
         writelog("getting cookie status")
-	ticket_status, id = get_ticket_status_from_ticket(ticket,cas_host,service_url,protocol,opt)
+
+	ticket_status, id = get_ticket_status_from_ticket_piv_required(ticket,cas_host,service_url,protocol,opt)
 
 	if ticket_status==TICKET_OK:
 		timestr     = str(int(time.time()))
@@ -466,61 +452,3 @@ def check_authenticated_p(ticket,cas_host, service_url, lifetime=None, secure=1,
 			return CAS_GATEWAY, "", make_pycas_cookie("",domain,path,secure,past_date)
         return CAS_TICKET_INVALID, "", ""
 
-#-----------------------------------------------------------------------
-#  Test
-#-----------------------------------------------------------------------
-
-
-if __name__=="__main__":
-
-	CAS_SERVER  = 'http://127.0.0.1:8099'
-        SERVICE_URL = "http://castest.org/pycas.py"
-
-	status, id, cookie = login(CAS_SERVER, SERVICE_URL, secure=0, opt="gateway")
-
-	print "Content-type: text/html"
-	print cookie
-	print
-	print """
-<html>
-<head>
-<title>
-castest.py
-</title>
-<style type=text/css>
-td {background-color: #dddddd; padding: 4px}
-</style>
-</head>
-<body>
-<h2>pycas.py</h2>
-<hr>
-"""
-	#  Print browser parameters from pycas.login
-	if cgi.FieldStorage().has_key("ticket"):
-		ticket = cgi.FieldStorage()["ticket"].value
-	else:
-		ticket = ""
-
-	in_cookie = os.getenv("HTTP_COOKIE")
-
-	print """
-<p>
-<b>Parameters sent from browser</b>
-<table>
-<tr> <td>Ticket</td> <td>%s</td> </tr> 
-<tr> <td>Cookie</td> <td>%s</td> </tr> 
-</table>
-</p>""" % (ticket,in_cookie)
-
-
-	#  Print output from pycas.login
-	print """
-<p>
-<b>Parameters returned from pycas.login()</b>
-<table>
-<tr><td>status</td><td> <b>%s</b> - <i>%s</i></td></tr>
-<tr><td>id</td><td> <b>%s</b></td></tr>
-<tr><td>cookie</td><td> <b>%s</b></td></tr>
-</table>
-</p>
-</body></html>""" % (status,CAS_MSG[status],id,cookie)
