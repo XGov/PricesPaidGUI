@@ -374,7 +374,7 @@ def get_ticket_status_from_ticket(ticket,cas_host,service_url,protocol,opt):
         else:
                 return ticket_status, ""
 
-def get_ticket_status_from_ticket_piv_required(ticket,cas_host,service_url,protocol,opt):
+def get_ticket_status_from_ticket_piv_required(assurancelevel,ticket,cas_host,service_url,protocol,opt):
         if protocol==1:
                 ticket_status, id = validate_cas_1(cas_host, service_url, ticket, opt)
         else:
@@ -384,7 +384,11 @@ def get_ticket_status_from_ticket_piv_required(ticket,cas_host,service_url,proto
         writelog("piv status"+repr(piv))
         writelog("pivx status"+repr(pivx))
         #  Make cookie and return id
-        if ticket_status==TICKET_OK and (piv == "urn:max:fips-201-pivcard" or pivx != ""):
+
+        # MAX is actually returning a value here (in pivx), I think I need
+        # to search for "assurancelevel3", because it is sending 
+        # "assurance2" when there is no PIV card!
+        if ticket_status==TICKET_OK and (piv == "urn:max:fips-201-pivcard" or  (assurancelevel in pivx)):
                 return TICKET_OK, id
         #  Return error status
         else:
@@ -399,7 +403,7 @@ def get_ticket_status_from_ticket_piv_required(ticket,cas_host,service_url,proto
 #-----------------------------------------------------------------------
 
 # This function should be merged with the above function "login"
-def check_authenticated_p(ticket,cas_host, service_url, lifetime=None, secure=1, protocol=2, path="/", opt=""):
+def check_authenticated_p(assurance_level,ticket,cas_host, service_url, lifetime=None, secure=1, protocol=2, path="/", opt=""):
 
         writelog("login begun")
 	#  Check cookie for previous pycas state, with is either
@@ -428,7 +432,7 @@ def check_authenticated_p(ticket,cas_host, service_url, lifetime=None, secure=1,
 
         writelog("getting cookie status")
 
-	ticket_status, id = get_ticket_status_from_ticket_piv_required(ticket,cas_host,service_url,protocol,opt)
+	ticket_status, id = get_ticket_status_from_ticket_piv_required(assurance_level,ticket,cas_host,service_url,protocol,opt)
 
 	if ticket_status==TICKET_OK:
 		timestr     = str(int(time.time()))

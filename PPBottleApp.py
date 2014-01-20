@@ -11,7 +11,7 @@ import requests
 import os
  
 from ppGuiConfig import URLToPPSearchApiSolr,GoogleAnalyticsInclusionScript,\
-     LocalURLToRecordFeedback,CAS_SERVER,CAS_RETURN_SERVICE_URL
+     LocalURLToRecordFeedback,CAS_SERVER,CAS_RETURN_SERVICE_URL,CAS_LEVEL_OF_ASSURANCE
 
 import auth
 
@@ -157,7 +157,7 @@ def loginViaMax():
 
     ticket = request.query['ticket']
     LogActivity.logDebugInfo("MAX AUTHENTICATED ticket :"+ticket)
-    status, id, cookie = pycas.check_authenticated_p(ticket,CAS_SERVER, CAS_RETURN_SERVICE_URL, lifetime=None, secure=1, protocol=2, path="/", opt="")
+    status, id, cookie = pycas.check_authenticated_p(CAS_LEVEL_OF_ASSURANCE,ticket,CAS_SERVER, CAS_RETURN_SERVICE_URL, lifetime=None, secure=1, protocol=2, path="/", opt="")
     maxAuthenticatedProperly = (status == pycas.CAS_OK);
 
     LogActivity.logDebugInfo("MAX AUTHENTICATED WITH ID:"+id)
