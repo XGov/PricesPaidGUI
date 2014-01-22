@@ -307,20 +307,23 @@ def validate_cas_2(cas_host, service_url, ticket, opt):
 #  Validate ticket using cas 2.0 protocol
 #    The 2.0 protocol allows the use of the mutually exclusive "renew" and "gateway" options.
 def validate_cas_2x(cas_host, service_url, ticket, opt):
+
 	#  Second Call to CAS server: Ticket found, verify it.
 	cas_validate = cas_host + "/cas/serviceValidate?ticket=" + ticket + "&service=" + service_url
 	if opt:
 		cas_validate += "&%s=true" % opt
+        writelog("cas_validate = "+cas_validate)
 	f_validate   = urllib.urlopen(cas_validate)
 	#  Get first line - should be yes or no
 	response = f_validate.read()
+        writelog("response = "+response)
 	id = parse_tag(response,"cas:user")
 	#  Ticket does not validate, return error
 	if id=="":
-		return TICKET_INVALID, ""
+		return TICKET_INVALID, "", "", ""
 	#  Ticket validates
 	else:
-                writelog("response = "+response)
+                writelog("validate response = "+response)
                 pivcard = parse_tag(response,"maxAttribute:samlAuthenticationStatementAuthMethod")
                 
                 agencyThatRequired = parse_tag(response,"maxAttribute:EAuth-LOA")
@@ -374,7 +377,7 @@ def get_ticket_status_from_ticket(ticket,cas_host,service_url,protocol,opt):
         else:
                 return ticket_status, ""
 
-def get_ticket_status_from_ticket_piv_required(assurancelevel,ticket,cas_host,service_url,protocol,opt):
+def get_ticket_status_from_ticket_piv_required(assurancelevel_p,ticket,cas_host,service_url,protocol,opt):
         if protocol==1:
                 ticket_status, id = validate_cas_1(cas_host, service_url, ticket, opt)
         else:
@@ -383,12 +386,17 @@ def get_ticket_status_from_ticket_piv_required(assurancelevel,ticket,cas_host,se
         writelog("ticket status"+repr(ticket_status))
         writelog("piv status"+repr(piv))
         writelog("pivx status"+repr(pivx))
+        writelog("assurance_level boolean"+repr(assurancelevel_p))
+        writelog("assurance_level boolean"+repr(assurancelevel_p(pivx)))
         #  Make cookie and return id
-
         # MAX is actually returning a value here (in pivx), I think I need
         # to search for "assurancelevel3", because it is sending 
         # "assurance2" when there is no PIV card!
-        if ticket_status==TICKET_OK and (piv == "urn:max:fips-201-pivcard" or  (assurancelevel in pivx)):
+#        if ticket_status==TICKET_OK and (piv == "urn:max:fips-201-pivcard" or  (assurancelevel_p(pivx))):
+
+        # This is supposed to be a simple boolean!  But...
+        # it is returning a set containing a boolean!  I know not why.
+        if ticket_status==TICKET_OK and (True in assurancelevel_p(pivx)):
                 return TICKET_OK, id
         #  Return error status
         else:
@@ -403,7 +411,7 @@ def get_ticket_status_from_ticket_piv_required(assurancelevel,ticket,cas_host,se
 #-----------------------------------------------------------------------
 
 # This function should be merged with the above function "login"
-def check_authenticated_p(assurance_level,ticket,cas_host, service_url, lifetime=None, secure=1, protocol=2, path="/", opt=""):
+def check_authenticated_p(assurance_level_p,ticket,cas_host, service_url, lifetime=None, secure=1, protocol=2, path="/", opt=""):
 
         writelog("login begun")
 	#  Check cookie for previous pycas state, with is either
@@ -432,7 +440,7 @@ def check_authenticated_p(assurance_level,ticket,cas_host, service_url, lifetime
 
         writelog("getting cookie status")
 
-	ticket_status, id = get_ticket_status_from_ticket_piv_required(assurance_level,ticket,cas_host,service_url,protocol,opt)
+	ticket_status, id = get_ticket_status_from_ticket_piv_required(assurance_level_p,ticket,cas_host,service_url,protocol,opt)
 
 	if ticket_status==TICKET_OK:
 		timestr     = str(int(time.time()))

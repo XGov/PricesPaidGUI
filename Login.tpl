@@ -110,10 +110,7 @@ OAuth.popup('github',
 });
 
 $("#max").click(function () {
-
   $('#fakeLoginViaMaxForm').submit();
-
-//  alert("Here is where you would log in to MAX, if I had it done!");
 });
 </script>
 
