@@ -13,7 +13,7 @@ import os
 from ppGuiConfig import URLToPPSearchApiSolr,GoogleAnalyticsInclusionScript,\
      LocalURLToRecordFeedback,CAS_SERVER,CAS_RETURN_SERVICE_URL,CAS_LEVEL_OF_ASSURANCE,CAS_CREATE_SESSION_IF_AUTHENTICATED,CAS_LEVEL_OF_ASSURANCE_PREDICATE
 
-import auth
+import P3Auth.auth
 
 import cPickle as pickle
 from cStringIO import StringIO
@@ -116,7 +116,7 @@ def logoutViaPost():
 
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
-    auth.del_session(ses_id)
+    P3Auth.auth.del_session(ses_id)
     return template('Logout',goog_anal_script=GoogleAnalyticsInclusionScript)
 
 @app.route('/Logout',method='GET')
@@ -125,7 +125,7 @@ def logoutViaGet():
 
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
-    auth.del_session(ses_id)
+    P3Auth.auth.del_session(ses_id)
     return template('Logout',goog_anal_script=GoogleAnalyticsInclusionScript)
 
 @app.route('/Login')
@@ -182,7 +182,7 @@ def pptriv():
     readCredentials()
 
 
-    if (not auth.does_authenticate(username,password,P3APISALT)):
+    if (not P3Auth.auth.does_authenticate(username,password,P3APISALT)):
         LogActivity.logBadCredentials(username)
         return template('Login',message='Improper Credentials.',
                     footer_html=FOOTER_HTML,
@@ -194,11 +194,11 @@ def doStartPageAuthenticated(username):
     search_string = request.forms.get('search_string')
     search_string = search_string if search_string is not None else ""
     psc_pattern = request.forms.get('psc_pattern')
-    ses_id = auth.create_session_id()
+    ses_id = P3Auth.auth.create_session_id()
     LogActivity.logSessionBegin(username,ses_id)
     LogActivity.logPageTurn(ses_id,"StartPage")
     return template('StartPage',search_string=search_string,\
-                    acsrf=auth.get_acsrf(ses_id),\
+                    acsrf=P3Auth.auth.get_acsrf(ses_id),\
                     username=username, \
                     session_id=ses_id,\
                     footer_html=FOOTER_HTML,\
@@ -208,7 +208,7 @@ def doStartPageAuthenticated(username):
 def StartPageReturned():
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         return template('Login',message='Improper Credentials or Timeout.',
                     extra_login_methods=EXTRA_LOGIN_METHODS,
                     footer_html=FOOTER_HTML,
@@ -217,10 +217,10 @@ def StartPageReturned():
     search_string = request.forms.get('search_string')
     search_string = search_string if search_string is not None else ""
     psc_pattern = request.forms.get('psc_pattern')
-    ses_id = auth.create_session_id()
+    ses_id = P3Auth.auth.create_session_id()
     LogActivity.logPageTurn(ses_id,"StartPageReturned")
     return template('StartPage',search_string=search_string,\
-                    acsrf=auth.get_acsrf(ses_id),\
+                    acsrf=P3Auth.auth.get_acsrf(ses_id),\
                     session_id=ses_id,\
                     footer_html=FOOTER_HTML,\
                     psc_pattern=psc_pattern,goog_anal_script=GoogleAnalyticsInclusionScript)
@@ -239,13 +239,13 @@ def pptriv():
     return render_main_page(acsrf,ses_id)
 
 def render_main_page(acsrf,ses_id):
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         return template('Login',message='Improper Credentials or Timeout.',
                     extra_login_methods=EXTRA_LOGIN_METHODS,
                     footer_html=FOOTER_HTML,
 goog_anal_script=GoogleAnalyticsInclusionScript)
     
-    auth.update_acsrf(ses_id)
+    P3Auth.auth.update_acsrf(ses_id)
 
     search_string = request.forms.get('search_string')
     search_string = search_string if search_string is not None else ""
@@ -253,7 +253,7 @@ goog_anal_script=GoogleAnalyticsInclusionScript)
 
     LogActivity.logPageTurn(ses_id,"MainPage")
     return template('MainPage',search_string=search_string,\
-                    acsrf=auth.get_acsrf(ses_id),\
+                    acsrf=P3Auth.auth.get_acsrf(ses_id),\
                     session_id=ses_id,\
                     feedback_url=LocalURLToRecordFeedback,\
                     footer_html=FOOTER_HTML,\
@@ -268,19 +268,19 @@ goog_anal_script=GoogleAnalyticsInclusionScript)
 def render_portfolio():
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         return template('Login',message='Improper Credentials or Timeout.',
                     extra_login_methods=EXTRA_LOGIN_METHODS,
                     footer_html=FOOTER_HTML,
                     goog_anal_script=GoogleAnalyticsInclusionScript)
 
-    auth.update_acsrf(ses_id)
+    P3Auth.auth.update_acsrf(ses_id)
 
     LogActivity.logPageTurn(ses_id,"Portfolio")
 
     portfolio = request.forms.get('portfolio')
 
-    return template('Portfolio',acsrf=auth.get_acsrf(ses_id),\
+    return template('Portfolio',acsrf=P3Auth.auth.get_acsrf(ses_id),\
                     session_id=ses_id,\
                     portfolio=portfolio,\
                     feedback_url=LocalURLToRecordFeedback,\
@@ -298,7 +298,7 @@ def apisolr():
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
 
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
 
@@ -338,7 +338,7 @@ def apisolr():
     acsrf = request.query['antiCSRF']
     ses_id = request.query['session_id']
 
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
 
@@ -404,7 +404,7 @@ def apisolr():
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
 
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
 
@@ -448,7 +448,7 @@ def feedback():
     ses_id = request.forms.get('session_id')
 
     LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
 
@@ -472,7 +472,7 @@ def get_portfolios():
     acsrf = request.query['antiCSRF']
     ses_id = request.query['session_id']
     LogActivity.logDebugInfo("Gotten on Portfolio: acsrf ses_id :"+acsrf+","+ses_id)
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         LogActivity.logDebugInfo(" BadAuthentication :"+acsrf+","+ses_id)
         return dict;
@@ -484,7 +484,7 @@ def get_portfolios():
 def get_specific_tags(name):
     acsrf = request.query['antiCSRF']
     ses_id = request.query['session_id']
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
     r = requests.get(URL_TO_MORRIS_PORTFOLIOS_API+"/content/"+name)
@@ -496,7 +496,7 @@ def get_create_portfolio(name):
     ses_id = request.forms.get('session_id')
 
     LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
     r = requests.post(URL_TO_MORRIS_PORTFOLIOS_API+"/decoration/"+name)
@@ -506,7 +506,7 @@ def get_create_portfolio(name):
 def get_export_portfolio():
     acsrf = request.query['antiCSRF']
     ses_id = request.query['session_id']
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
     r = requests.get(URL_TO_MORRIS_PORTFOLIOS_API+"/decoration_export")
@@ -517,7 +517,7 @@ def get_records():
     acsrf = request.query['antiCSRF']
     ses_id = request.query['session_id']
 
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
     r = requests.get(URL_TO_MORRIS_PORTFOLIOS_API+"/decoration_records")
@@ -528,7 +528,7 @@ def get_records(columns):
     acsrf = request.query['antiCSRF']
     ses_id = request.query['session_id']
 
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
     r = requests.get(URL_TO_MORRIS_PORTFOLIOS_API+"/content_records_with_client_data/"+columns)
@@ -540,7 +540,7 @@ def add_record_to_portfolio(key,portfolio):
     ses_id = request.forms.get('session_id')
 
     LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
     r = requests.post(URL_TO_MORRIS_PORTFOLIOS_API+"/decoration/add_record/"+portfolio+"/"+key)
@@ -552,7 +552,7 @@ def delete_portfolio(portfolio):
     ses_id = request.forms.get('session_id')
 
     LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
     r = requests.post(URL_TO_MORRIS_PORTFOLIOS_API+"/delete_decoration/"+portfolio)
@@ -564,7 +564,7 @@ def delete_association(portfolio,transaction):
     ses_id = request.forms.get('session_id')
 
     LogActivity.logDebugInfo("acsrf ses_d :"+repr(acsrf)+' '+repr(ses_id))
-    if (not auth.is_valid_acsrf(ses_id,acsrf)):
+    if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
     r = requests.post(URL_TO_MORRIS_PORTFOLIOS_API+"/delete_association/"+portfolio+"/"+transaction)
@@ -598,15 +598,9 @@ def returnSessionViaMax(requestId):
 
     LogActivity.logDebugInfo("MAX AUTHENTICATED WITH ID:"+id)
 
-    username = "billybob"
     LogActivity.logDebugInfo("ReturnSessionViaMax authenticated :"+repr(maxAuthenticatedProperly))
     if (maxAuthenticatedProperly):
-# Here we want to redirect back to where we came from.  May 
-# have to find a way to store this, as I have No way to to do it now.
-# for not I will Fake it till I Make it...
-
         sendTokensBackTo = mapRequestToReturnURL[requestId]
-#        sendTokensBackTo = "http://127.0.0.1/microApiUser/TestPage.html"
         response.status = 303 
         domain,path = urlparse.urlparse(CAS_RETURN_SERVICE_URL)[1:3]
         secure=1
@@ -617,12 +611,12 @@ def returnSessionViaMax(requestId):
 # what is being used and the user, who is probably using the API,
 # will want to ignore this.
         response.set_header('Set-Cookie', strip)
-        ses_id = auth.create_session_id()
-        acsrf = auth.get_acsrf(ses_id)
+        ses_id = P3Auth.auth.create_session_id()
+        acsrf = P3Auth.auth.get_acsrf(ses_id)
         response.add_header('Location',sendTokensBackTo+"?p3session_id="+ses_id+"&p3acsrf="+acsrf)
         return "You will be redirected."+strip+sendTokensBackTo
     else:
-        LogActivity.logBadCredentials(username+":failed to Authenticate with Max")
+        LogActivity.logBadCredentials("Failed to Authenticate with Max")
         return template('Login',message='Improper Credentials.',
                     footer_html=FOOTER_HTML,
                     extra_login_methods=EXTRA_LOGIN_METHODS,
@@ -635,13 +629,6 @@ def getTokensViaMax():
     global mapRequestToReturnURL
 
     sendTokensBackTo = request.query['redirectbackto']
-
-    # This must be stored in a dictionary...but under what key?
-    # We will make them give us a key....but how to recover...
-    # We can recover only if we push into amendedReturnURL below
-    # In this sense, there the privatekey is nothing more than convenient number...
-    
-
     response.status = 303 
     domain,path = urlparse.urlparse(CAS_RETURN_SERVICE_URL)[1:3]
     secure=1
@@ -652,8 +639,7 @@ def getTokensViaMax():
     # There is a danger that we might have multiple requested
     # get crossed here because we are treating this "statelessly".
     # Since we need to make sure that we go back to the proper 
-    # redirect, we have to add into the "ReturnSessionViaMax" URL.
-#    amendedReturnURL = CAS_CREATE_SESSION_IF_AUTHENTICATED+'?redirectbackto='+sendTokensBackTo
+    # redirect, we add the request number to the URL
     amendedReturnURL = CAS_CREATE_SESSION_IF_AUTHENTICATED+"/"+repr(requestNumber)
     mapRequestToReturnURL[requestNumber] = sendTokensBackTo
     requestNumber = requestNumber + 1
