@@ -9,6 +9,7 @@ import LogFeedback
 import LogActivity
 import requests
 import os
+import P3Auth.LogActivity
 import P3Auth.pycas
  
 from ppGuiConfig import URLToPPSearchApiSolr,GoogleAnalyticsInclusionScript,\
@@ -23,7 +24,6 @@ from cStringIO import StringIO
 # classes.  Probably it should be removed.
 import morris_config
 
-import pycas
 import os
 import cgi
 import md5
@@ -103,17 +103,17 @@ from bottle import template
 
 @app.route('/')
 def legalNotice():
-    LogActivity.logPageTurn("nosession","LegalNotice")
+    P3Auth.LogActivity.logPageTurn("nosession","LegalNotice")
     return template('LegalNotice',goog_anal_script=GoogleAnalyticsInclusionScript)
 
 @app.route('/SearchHelp')
 def searchHelp():
-    LogActivity.logPageTurn("nosession","SearchHelp")
+    P3Auth.LogActivity.logPageTurn("nosession","SearchHelp")
     return template('SearchHelp',goog_anal_script=GoogleAnalyticsInclusionScript)
 
 @app.route('/Logout',method='POST')
 def logoutViaPost():
-    LogActivity.logPageTurn("nosession","Logout")
+    P3Auth.LogActivity.logPageTurn("nosession","Logout")
 
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
@@ -122,7 +122,7 @@ def logoutViaPost():
 
 @app.route('/Logout',method='GET')
 def logoutViaGet():
-    LogActivity.logPageTurn("nosession","Logout")
+    P3Auth.LogActivity.logPageTurn("nosession","Logout")
 
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
@@ -131,7 +131,7 @@ def logoutViaGet():
 
 @app.route('/Login')
 def login():
-    LogActivity.logPageTurn("nosession","LoginPage")
+    P3Auth.LogActivity.logPageTurn("nosession","LoginPage")
     return template('Login',message='',
                     footer_html=FOOTER_HTML,
                     extra_login_methods=EXTRA_LOGIN_METHODS,
@@ -139,7 +139,7 @@ def login():
 
 @app.route('/LoginViaMax')
 def loginViaMax():
-    LogActivity.logPageTurn("nosession","MaxLoginPage")
+    P3Auth.LogActivity.logPageTurn("nosession","MaxLoginPage")
     response.status = 303 
     domain,path = urlparse.urlparse(CAS_RETURN_SERVICE_URL)[1:3]
     secure=1
@@ -153,20 +153,20 @@ def loginViaMax():
 
 @app.route('/ReturnLoginViaMax')
 def returnLoginViaMax():
-    LogActivity.logPageTurn("nosession","ReturnMaxLoginPage")
+    P3Auth.LogActivity.logPageTurn("nosession","ReturnMaxLoginPage")
 
     ticket = request.query['ticket']
-    LogActivity.logDebugInfo("MAX AUTHENTICATED ticket :"+ticket)
+    P3Auth.LogActivity.logDebugInfo("MAX AUTHENTICATED ticket :"+ticket)
     status, id, cookie = P3Auth.pycas.check_authenticated_p(CAS_LEVEL_OF_ASSURANCE_PREDICATE,ticket,CAS_SERVER, CAS_RETURN_SERVICE_URL, lifetime=None, secure=1, protocol=2, path="/", opt="")
     maxAuthenticatedProperly = (status == P3Auth.pycas.CAS_OK);
 
-    LogActivity.logDebugInfo("MAX AUTHENTICATED WITH ID:"+id)
+    P3Auth.LogActivity.logDebugInfo("MAX AUTHENTICATED WITH ID:"+id)
 
     username = "billybob"
     if (maxAuthenticatedProperly):
         return doStartPageAuthenticated(username)
     else:
-        LogActivity.logBadCredentials(username+":failed to Authenticate with Max")
+        P3Auth.LogActivity.logBadCredentials(username+":failed to Authenticate with Max")
         return template('Login',message='Improper Credentials.',
                     footer_html=FOOTER_HTML,
                     extra_login_methods=EXTRA_LOGIN_METHODS,
@@ -184,7 +184,7 @@ def pptriv():
 
 
     if (not P3Auth.auth.does_authenticate(username,password,P3APISALT)):
-        LogActivity.logBadCredentials(username)
+        P3Auth.LogActivity.logBadCredentials(username)
         return template('Login',message='Improper Credentials.',
                     footer_html=FOOTER_HTML,
                     extra_login_methods=EXTRA_LOGIN_METHODS,
@@ -196,8 +196,8 @@ def doStartPageAuthenticated(username):
     search_string = search_string if search_string is not None else ""
     psc_pattern = request.forms.get('psc_pattern')
     ses_id = P3Auth.auth.create_session_id()
-    LogActivity.logSessionBegin(username,ses_id)
-    LogActivity.logPageTurn(ses_id,"StartPage")
+    P3Auth.LogActivity.logSessionBegin(username,ses_id)
+    P3Auth.LogActivity.logPageTurn(ses_id,"StartPage")
     return template('StartPage',search_string=search_string,\
                     acsrf=P3Auth.auth.get_acsrf(ses_id),\
                     username=username, \
@@ -219,7 +219,7 @@ def StartPageReturned():
     search_string = search_string if search_string is not None else ""
     psc_pattern = request.forms.get('psc_pattern')
     ses_id = P3Auth.auth.create_session_id()
-    LogActivity.logPageTurn(ses_id,"StartPageReturned")
+    P3Auth.LogActivity.logPageTurn(ses_id,"StartPageReturned")
     return template('StartPage',search_string=search_string,\
                     acsrf=P3Auth.auth.get_acsrf(ses_id),\
                     session_id=ses_id,\
@@ -252,7 +252,7 @@ goog_anal_script=GoogleAnalyticsInclusionScript)
     search_string = search_string if search_string is not None else ""
     commodity_id = request.forms.get('commodity_id')
 
-    LogActivity.logPageTurn(ses_id,"MainPage")
+    P3Auth.LogActivity.logPageTurn(ses_id,"MainPage")
     return template('MainPage',search_string=search_string,\
                     acsrf=P3Auth.auth.get_acsrf(ses_id),\
                     session_id=ses_id,\
@@ -277,7 +277,7 @@ def render_portfolio():
 
     P3Auth.auth.update_acsrf(ses_id)
 
-    LogActivity.logPageTurn(ses_id,"Portfolio")
+    P3Auth.LogActivity.logPageTurn(ses_id,"Portfolio")
 
     portfolio = request.forms.get('portfolio')
 
@@ -323,7 +323,7 @@ def apisolr():
     r = requests.post(URLToPPSearchApiSolr+"/fromIds", data=payload, \
                           auth=(PricesPaidAPIBasicAuthUsername, PricesPaidAPIBasicAuthPassword), verify=False)
 
-    LogActivity.logDebugInfo("Got Past Post to :"+URLToPPSearchApiSolr)
+    P3Auth.LogActivity.logDebugInfo("Got Past Post to :"+URLToPPSearchApiSolr)
 
     content = r.text
 
@@ -361,7 +361,7 @@ def apisolr():
     r = requests.post(URLToPPSearchApiSolr+"/fromIds", data=payload, \
                           auth=(PricesPaidAPIBasicAuthUsername, PricesPaidAPIBasicAuthPassword), verify=False)
 
-    LogActivity.logDebugInfo("Got Past Post to :"+URLToPPSearchApiSolr)
+    P3Auth.LogActivity.logDebugInfo("Got Past Post to :"+URLToPPSearchApiSolr)
 
     content = r.text
 
@@ -411,14 +411,14 @@ def apisolr():
 
     readCredentials()
 
-    LogActivity.logDebugInfo("Kill me: "+PricesPaidAPIBasicAuthUsername+PricesPaidAPIBasicAuthPassword)
+    P3Auth.LogActivity.logDebugInfo("Kill me: "+PricesPaidAPIBasicAuthUsername+PricesPaidAPIBasicAuthPassword)
 
     search_string = request.forms.get('search_string')
     psc_pattern = request.forms.get('psc_pattern')
 
     max_results = request.forms.get('numRows')
 
-    LogActivity.logSearchBegun(ses_id,psc_pattern,search_string)
+    P3Auth.LogActivity.logSearchBegun(ses_id,psc_pattern,search_string)
 
 
     payload = { 'username' : PricesPaidAPIUsername,\
@@ -430,7 +430,7 @@ def apisolr():
     r = requests.post(URLToPPSearchApiSolr, data=payload, \
                           auth=(PricesPaidAPIBasicAuthUsername, PricesPaidAPIBasicAuthPassword), verify=False)
 
-    LogActivity.logDebugInfo("Got Past Post to :"+URLToPPSearchApiSolr)
+    P3Auth.LogActivity.logDebugInfo("Got Past Post to :"+URLToPPSearchApiSolr)
 
     content = r.text
 
@@ -440,7 +440,7 @@ def apisolr():
     # with Python or confusion in Bottle.
     d = ast.literal_eval(content)
 
-    LogActivity.logSearchDone(ses_id,psc_pattern,search_string)
+    P3Auth.LogActivity.logSearchDone(ses_id,psc_pattern,search_string)
     return d
 
 @app.route('/record_feedback',method='POST')
@@ -448,13 +448,13 @@ def feedback():
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
 
-    LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
+    P3Auth.LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
     if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
 
-    LogActivity.logDebugInfo("authenticated !")
-    LogActivity.logFeedback(ses_id)
+    P3Auth.LogActivity.logDebugInfo("authenticated !")
+    P3Auth.LogActivity.logFeedback(ses_id)
     message = request.forms.get('message')
     name = request.forms.get('name')
     radio_list_value = request.forms.get('radio_list_value')
@@ -469,13 +469,13 @@ def feedback():
 # BEGIN SERVER-SIDE CALLS TO MORRIS PORTFOLIO API
 @app.route('/portfolio', method='GET')
 def get_portfolios():
-    LogActivity.logDebugInfo("Begin Get Portfolios")
+    P3Auth.LogActivity.logDebugInfo("Begin Get Portfolios")
     acsrf = request.query['antiCSRF']
     ses_id = request.query['session_id']
-    LogActivity.logDebugInfo("Gotten on Portfolio: acsrf ses_id :"+acsrf+","+ses_id)
+    P3Auth.LogActivity.logDebugInfo("Gotten on Portfolio: acsrf ses_id :"+acsrf+","+ses_id)
     if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
-        LogActivity.logDebugInfo(" BadAuthentication :"+acsrf+","+ses_id)
+        P3Auth.LogActivity.logDebugInfo(" BadAuthentication :"+acsrf+","+ses_id)
         return dict;
     r = requests.get(URL_TO_MORRIS_PORTFOLIOS_API+"/decoration")
     d = ast.literal_eval(r.text)
@@ -496,7 +496,7 @@ def get_create_portfolio(name):
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
 
-    LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
+    P3Auth.LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
     if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
@@ -540,7 +540,7 @@ def add_record_to_portfolio(key,portfolio):
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
 
-    LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
+    P3Auth.LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
     if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
@@ -552,7 +552,7 @@ def delete_portfolio(portfolio):
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
 
-    LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
+    P3Auth.LogActivity.logDebugInfo("acsrf ses_d :"+acsrf+ses_id)
     if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
@@ -564,7 +564,7 @@ def delete_association(portfolio,transaction):
     acsrf = request.forms.get('antiCSRF')
     ses_id = request.forms.get('session_id')
 
-    LogActivity.logDebugInfo("acsrf ses_d :"+repr(acsrf)+' '+repr(ses_id))
+    P3Auth.LogActivity.logDebugInfo("acsrf ses_d :"+repr(acsrf)+' '+repr(ses_id))
     if (not P3Auth.auth.is_valid_acsrf(ses_id,acsrf)):
         dict = {0: {"status": "BadAuthentication"}}
         return dict;
