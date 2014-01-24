@@ -167,7 +167,9 @@ def returnLoginViaMax():
         return doStartPageAuthenticated(username)
     else:
         P3Auth.LogActivity.logBadCredentials(username+":failed to Authenticate with Max")
-        return template('Login',message='Improper Credentials.',
+# It would be better to make this message configuration in the same way that CAS_LEVEL_OF_ASSURANCE_PREDICATE is...
+# But that is for another day.
+        return template('Login',message='Improper Credentials returned by MAX.  Possibly you authenticated without using a physical PIV/CAC card, or MAX did not return a high enough Level of Assurance.  Trying logging out of MAX at http://max.omb.gov and re-authenticating here.',
                     footer_html=FOOTER_HTML,
                     extra_login_methods=EXTRA_LOGIN_METHODS,
                         goog_anal_script=GoogleAnalyticsInclusionScript)
