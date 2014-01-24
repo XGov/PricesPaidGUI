@@ -436,7 +436,7 @@ Note sure I really need them  */
     width: 25%;
     min-width: 200px;
     background: white;
-    z-index: 1500;
+    z-index: 1200;
     margin-top: 25px;
     padding: 0;
 }
@@ -646,9 +646,9 @@ Note sure I really need them  */
     position: absolute;
     right: -32px;
     top: -16px;
-    z-index: 6;
-    height: 16px;
-    width: 16px;
+    z-index: 1300;
+    height: 30px;
+    width: 30px;
 }
 
 #start-header-right {
