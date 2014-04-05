@@ -3,3 +3,9 @@
 *.pyc
 *.saf
 
+
+/build/
+
+/dist/
+
+/PricesPaidGUI.egg-info/
